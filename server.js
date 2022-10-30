@@ -1,12 +1,10 @@
 const inquirer = require('inquirer');
-const mysql2 = require('mysql2');
-
-//const db = mysql2.createConnection();
+const dbQuery = require('./dbQuery');
 
 const topLevelQs = [
   {
     type: 'checkbox',
-    message: "Please select from one of the options below:",
+    message: "What would you like to do?",
     choices: [
           'View all departments', 
           'View all roles', 
@@ -23,7 +21,13 @@ function askUser() {
   inquirer.prompt(topLevelQs)
   .then(response => {
     console.log(response);
-    console.log("Selected action:" + response.selectedAction);
+    if(response.selectedAction == 'View all departments') {
+      dbQuery.getDepartments();
+    } else if (response.selectedAction == 'View all roles') {
+      dbQuery.getRoles();
+    } else if (response.selectedAction == 'View all employees'){
+      dbQuery.getEmployees();
+    };
   });
 }
 askUser();
