@@ -1,4 +1,5 @@
 const inquirer = require('inquirer');
+const { allowedNodeEnvironmentFlags } = require('process');
 const dbQuery = require('./dbQuery');
 
 const topLevelQs = [
@@ -56,7 +57,10 @@ function addDepartment() {
   inquirer.prompt(addDepartmentQs)
   .then(response => {
     console.log("Adding department: " + response.departmentName);
+    dbQuery.addDepartment(response.departmentName, askUser);
   });
 }
+
+
 
 askUser();

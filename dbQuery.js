@@ -30,7 +30,7 @@ function getRoles(next) {
 
 function getEmployees(next) {
   console.log("getting departments from the database");
-  db.query(`SELECT employee_id, first_name, last_name, title, salary, dep_name 
+  db.query(`SELECT employee_id, first_name, last_name, title, dep_name, salary 
             FROM employees INNER JOIN roles ON employees.title_id = roles.role_id
             INNER JOIN departments ON roles.department_id = departments.dep_id`,
     (err, results) => { 
@@ -39,8 +39,17 @@ function getEmployees(next) {
   });
 }
 
+function addDepartment(name, next) {
+  console.log(`adding a new department to the database:${name} `);
+  db.query(`INSERT INTO departments(dep_name) VALUES ("${name}")`, (err, results) => {
+    console.log("added department");
+    next();
+  });
+}
+
 module.exports = {
   getDepartments,
   getRoles,
-  getEmployees
+  getEmployees,
+  addDepartment
 };
