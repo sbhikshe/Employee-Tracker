@@ -9,24 +9,33 @@ const db = mysql2.createConnection(
   console.log("Connected to organization_db")
 );
 
-function getDepartments() {
-  console.log("getting departments from the database");
+function getDepartments(next) {
   db.query(`SELECT * FROM departments`, (err, results) => {
-    console.log(results);
+    console.log("\n");
+    console.table(results);
+    next();    
   });
 }
 
-function getRoles() {
+function getRoles(next) {
   console.log("getting departments from the database");
-  db.query(`SELECT * FROM roles`, (err, results) => {
-    console.log(results);
-  });
+    db.query(`SELECT role_id, title, salary, dep_name 
+              FROM roles INNER JOIN departments ON roles.department_id = departments.dep_id`,
+             (err, results) => { 
+      console.log("\n");
+      console.table(results);
+      next();
+    });
 }
 
-function getEmployees() {
+function getEmployees(next) {
   console.log("getting departments from the database");
-  db.query(`SELECT * FROM employees`, (err, results) => {
-    console.log(results);
+  db.query(`SELECT employee_id, first_name, last_name, title, salary, dep_name 
+            FROM employees INNER JOIN roles ON employees.title_id = roles.role_id
+            INNER JOIN departments ON roles.department_id = departments.dep_id`,
+    (err, results) => { 
+    console.table(results);
+    next();
   });
 }
 

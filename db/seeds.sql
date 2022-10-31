@@ -1,6 +1,6 @@
 USE organization_db;
 
-INSERT INTO departments (id, name)
+INSERT INTO departments (dep_id, dep_name)
 VALUES   
       (1, "Human Resources"),
       (2, "Marketing"),
@@ -9,7 +9,7 @@ VALUES
       (5, "Software Engineering")
 ;
 
-INSERT INTO roles (id, title, salary, department_id )
+INSERT INTO roles (role_id, title, salary, department_id )
 VALUES (10, "Head of Human Resources", 150000, "001"),
 (11, "Recruiter", 100000, "001"),
 ("020", "Marketing Manager", 200000, "002"),
