@@ -221,7 +221,7 @@ function getDepartments(next) {
 }
 
 function getRoles(next) {
-    db.promise().query(`SELECT role_id, title, salary, dep_name 
+    db.promise().query(`SELECT role_id, title, dep_name, salary
               FROM roles INNER JOIN departments ON roles.department_id = departments.dep_id`)
       .then(([rows, fields]) => {
         console.log("\n");
@@ -328,14 +328,18 @@ function addEmployee() {
     }
 
     let manager_id;
-    for(const item of managers) {
-      if(response.manager == item.name){
-        manager_id = item.employee_id;
+    if(response.manager == "None") {
+      manager_id = null;
+    } else {
+      for(const item of managers) {
+        if(response.manager == item.name){
+          manager_id = item.employee_id;
+        }
       }
     }
 
     db.promise().query(`INSERT INTO employees(first_name, last_name, title_id, manager_id)
-    VALUES ("${response.first_name}", "${response.last_name}", "${role_id}", "${manager_id}")`)
+    VALUES ("${response.first_name}", "${response.last_name}", "${role_id}", ${manager_id})`)
     .then(([rows, fields]) => {
       db.promise().query(`SELECT * FROM employees`)
       .then(([rows, fields]) => {
