@@ -29,11 +29,11 @@ VALUES (10, "Head of Human Resources", 150000, 001),
 (54, "SW Build Manager", 150000, 5);
 
 INSERT INTO employees(first_name, last_name, title_id, manager_id)
-VALUES ("John", "Doe", 10, NULL),
-("Jane", "Eyre", 20, NULL),
-("Michele", "Dwyer", 30, NULL),
-("Lauren", "Graham", 40, NULL),
-("Alan", "Pope", 50, NULL),
+VALUES ("John", "Doe", 10, null),
+("Jane", "Eyre", 20, null),
+("Michele", "Dwyer", 30, null),
+("Lauren", "Graham", 40, null),
+("Alan", "Pope", 50, null),
 ("Heidi", "Williams", 11, 1),
 ("Jennifer", "King", 21, 2),
 ("Mark", "Callahan", 31, 3),
