@@ -55,9 +55,15 @@ const addRoleQs = [
     message: "Enter the role id",
     name: 'role_id',
     validate (role_id) {
-      // TBD: should check that its not already taken
-      if (typeof role_id !== 'number') {
+      if (!role_id || typeof role_id !== 'number') {
         return ("Please enter a number");
+      } else {
+      // should check that its not already taken
+        for (const item of roles) {
+          if (role_id == item.role_id) {
+            return ("Id already exists, please enter a different number");
+          }
+        }
       }
       return true;
     }
@@ -181,8 +187,6 @@ function readDbForSetup() {
   /* read the departments */
   db.promise().query(`SELECT * FROM departments`)
   .then (([rows, fields]) => {
-      console.log("\n");
-      //console.table(rows);
       departments = rows;
     }
   );
@@ -190,30 +194,22 @@ function readDbForSetup() {
   /* read the roles */
   db.promise().query(`SELECT * FROM roles`)
   .then(([rows, fields]) => {
-    console.log("\n");
-    //console.table(rows);
     roles = rows;
   });
 
   /* read the employees */
   db.promise().query(`SELECT employee_id, CONCAT_WS(" ", first_name, last_name) AS name FROM employees`)
   .then(([rows, fields]) => {
-      console.log("\n");
-      //console.table(rows);
       employees = rows;
   });
 
    /* read the managers */
    db.promise().query(`SELECT employee_id, CONCAT_WS(" ", first_name, last_name) AS name FROM employees WHERE manager_id IS NULL`)
    .then(([rows, fields]) => {
-       console.log("\n");
-       //console.table(rows);
        managers = rows;
    });
 }
 function getDepartments(next) {
-  console.log("getting departments from the database");
-
   db.promise().query(`SELECT * FROM departments`)
   .then (([rows, fields]) => {
       console.log("\n");
@@ -225,7 +221,6 @@ function getDepartments(next) {
 }
 
 function getRoles(next) {
-  console.log("getting roles from the database");
     db.promise().query(`SELECT role_id, title, salary, dep_name 
               FROM roles INNER JOIN departments ON roles.department_id = departments.dep_id`)
       .then(([rows, fields]) => {
@@ -237,10 +232,19 @@ function getRoles(next) {
 }
 
 function getEmployees(next) {
-  console.log("getting employees from the database");
-  db.promise().query(`SELECT employee_id, first_name, last_name, title, dep_name, salary 
-            FROM employees INNER JOIN roles ON employees.title_id = roles.role_id
-            INNER JOIN departments ON roles.department_id = departments.dep_id`)
+  let queryStr = `SELECT employee_id, CONCAT_WS(" ", first_name, last_name) as name, title, dep_name, salary, NULL as manager
+  FROM employees 
+  INNER JOIN roles ON title_id = roles.role_id
+  INNER JOIN departments ON roles.department_id = departments.dep_id
+  WHERE manager_id IS NULL 
+  UNION            
+  SELECT b.employee_id, CONCAT_WS(" ", b.first_name, b.last_name) as name, title, dep_name, salary, CONCAT_WS(" ", a.first_name, a.last_name) as manager
+  FROM employees a, employees b 
+  INNER JOIN roles ON title_id = roles.role_id
+  INNER JOIN departments ON roles.department_id = departments.dep_id
+  WHERE b.manager_id = a.employee_id`;
+
+  db.promise().query(queryStr)
     .then(([rows, fields]) => {
       console.log("\n");
       console.table(rows);
@@ -269,14 +273,15 @@ function addRole() {
   for(const item of departments) {
     addRoleQs[3].choices.push(item.dep_name);
   }
-  console.log(addRoleQs[3].choices);
   inquirer.prompt(addRoleQs)
   .then(response => {
+    /*
     console.log("Adding a role: ");
     console.log("role_id = " + response.role_id);
     console.log("title = " + response.title);
     console.log("salary = " + response.salary);
     console.log("department = " + response.department);
+    */
 
     let department_id;
     for (const item of departments) {
@@ -303,13 +308,17 @@ function addEmployee() {
   for(const item of managers) {
       addEmployeeQs[3].choices.push(item.name);
   }
+  addEmployeeQs[3].choices.push("None");
+
   inquirer.prompt(addEmployeeQs)
   .then(response => {
+    /*
     console.log("Adding an employee: ");
     console.log("first_name = " + response.first_name);
     console.log("last_name = " + response.last_name);
     console.log("role = " + response.role);
     console.log("manager = " + response.manager);
+    */
 
     let role_id;
     for (const item of roles) {
@@ -356,10 +365,12 @@ function updateEmployee() {
 
   inquirer.prompt(updateEmployeeQs)
   .then(response => {
+    /*
     console.log("Adding an employee: ");
     console.log("name = " + response.name);
     console.log("role = " + response.role);
     console.log("manager = " + response.manager);
+    */
 
     let employee_id;
     for(const item of employees) {
