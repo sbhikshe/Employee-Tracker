@@ -1,86 +1,148 @@
-/*
-const mysql2 = require('mysql2');
+class DbQuery {
+  constructor() {
+    this.departments = [];
+    this.roles = [];
+    this.employees = [];
+    this.managers = [];
 
-const db = mysql2.createConnection(
-  {
-    host: 'localhost',
-    user: 'root',
-    database: 'organization_db'
-  },
-  console.log("Connected to organization_db")
-);
+    this.mysql2 = require('mysql2');
+    this.db = this.mysql2.createConnection(
+    {
+      host: 'localhost',
+      user: 'root',
+      database: 'organization_db'
+    },
+    console.log("Connected to organization_db")
+    );
+  }
 
-var departments = [];
-let roles = [];
-let employees = [];
+  /* get methods */
+  getDepartments = () => this.departments;
+  getRoles = () => this.roles;
+  getEmployees = () => this.employees;
+  getManagers = () => this.managers;
 
-function getDepartments(next) {
-  console.log("getting departments from the database");
-
-  db.promise().query(`SELECT * FROM departments`)
-  .then (([rows, fields]) => {
-      console.log("\n");
-      console.table(rows);
-      //departments = rows;
-      next(rows);
-    }
-  );
+  initFromDb() {
+    /* read the departments */
+    this.db.promise().query(`SELECT * FROM departments`)
+    .then (([rows, fields]) => {
+      this.departments = rows;
+      }
+    );
   
- 
-    db.query(`SELECT * FROM departments`, (err, results) => {
-      console.log("\n");
-      console.table(results);
-      departments = results;
-      console.log("departments[]" + departments);
-      next? next(): console.log("updated departments");
+    /* read the roles */
+    this.db.promise().query(`SELECT * FROM roles`)
+    .then(([rows, fields]) => {
+      this.roles = rows;
     });
-    
-}
-
-function getRoles(next) {
-  console.log("getting roles from the database");
-    db.query(`SELECT role_id, title, salary, dep_name 
-              FROM roles INNER JOIN departments ON roles.department_id = departments.dep_id`,
-             (err, results) => { 
-      console.log("\n");
-      console.table(results);
-      roles = results;
-      next();
+  
+    /* read the employees */
+    this.db.promise().query(`SELECT employee_id, CONCAT_WS(" ", first_name, last_name) AS name FROM employees`)
+    .then(([rows, fields]) => {
+      this.employees = rows;
     });
-}
+  
+     /* read the managers */
+     this.db.promise().query(`SELECT employee_id, CONCAT_WS(" ", first_name, last_name) AS name FROM employees WHERE manager_id IS NULL`)
+     .then(([rows, fields]) => {
+      this.managers = rows;
+     });
+  }
 
-function getEmployees(next) {
-  console.log("getting employees from the database");
-  db.query(`SELECT employee_id, first_name, last_name, title, dep_name, salary 
-            FROM employees INNER JOIN roles ON employees.title_id = roles.role_id
-            INNER JOIN departments ON roles.department_id = departments.dep_id`,
-    (err, results) => { 
-    console.table(results);
-    employees = results;
-    next();
-  });
-}
+  getDepartmentsFromDb(next) {
+    this.db.promise().query(`SELECT * FROM departments`)
+    .then (([rows, fields]) => {
+        console.log("\n");
+        console.table(rows);
+        this.departments = rows;
+        next();
+      }
+    );
+  }
 
-function addDepartment(name, next) {
-  console.log(`adding a new department to the database:${name} `);
-  db.query(`INSERT INTO departments(dep_name) VALUES ("${name}")`, (err, results) => {
-    console.log("added department");
-    // do db.query to update departments[]
-    db.query(`SELECT * FROM departments`, (err, results) => {
-      console.table(results);
-      departments = results;
+  getRolesFromDb(next) {
+    this.db.promise().query(`SELECT role_id, title, dep_name, salary
+              FROM roles INNER JOIN departments ON roles.department_id = departments.dep_id`)
+      .then(([rows, fields]) => {
+        console.log("\n");
+        console.table(rows);
+        this.roles = rows;
+        next();
+      });
+  }
+
+  getEmployeesFromDb(next) {
+    let queryStr = `SELECT employee_id, CONCAT_WS(" ", first_name, last_name) as name, title, dep_name, salary, NULL as manager
+    FROM employees 
+    INNER JOIN roles ON title_id = roles.role_id
+    INNER JOIN departments ON roles.department_id = departments.dep_id
+    WHERE manager_id IS NULL 
+    UNION            
+    SELECT b.employee_id, CONCAT_WS(" ", b.first_name, b.last_name) as name, title, dep_name, salary, CONCAT_WS(" ", a.first_name, a.last_name) as manager
+    FROM employees a, employees b 
+    INNER JOIN roles ON title_id = roles.role_id
+    INNER JOIN departments ON roles.department_id = departments.dep_id
+    WHERE b.manager_id = a.employee_id`;
+  
+    this.db.promise().query(queryStr)
+      .then(([rows, fields]) => {
+        console.log("\n");
+        console.table(rows);
+        this.employees = rows;
+        next();
+      });
+  }
+
+  addDepartmentToDb(departmentName, next) {
+    this.db.query(`INSERT INTO departments(dep_name) VALUES ("${departmentName}")`, (err, results) => {
+      console.log("added department");
+      this.db.query(`SELECT * FROM departments`, (err, results) => {
+        console.log("\n");
+        console.table(results);
+        this.departments = results;
+        next();
+      });
     });
-    next();
-  });
-}
+  }
+  
+  addRoleToDb(role_id, title, salary, department_id, next) {
+    this.db.promise().query(`INSERT INTO roles(role_id, title, salary, department_id) VALUES("${role_id}", "${title}", "${salary}", "${department_id}")`)
+    .then(([rows, fields])=> {
+      this.db.query(`SELECT * FROM roles`, (err, results) => {
+        console.table(results);
+        this.roles = results;
+        next();
+      });
+    }); 
+  }
 
-module.exports = {
-  getDepartments,
-  getRoles,
-  getEmployees,
-  addDepartment,
-  departments,
-  roles,
-  employees
+  addEmployeeToDb(first_name, last_name, role_id, manager_id, next) {
+    this.db.promise().query(`INSERT INTO employees(first_name, last_name, title_id, manager_id)
+    VALUES ("${first_name}", "${last_name}", "${role_id}", ${manager_id})`)
+    .then(([rows, fields]) => {
+      this.db.promise().query(`SELECT * FROM employees`)
+      .then(([rows, fields]) => {
+          console.log("\n");
+          console.table(rows);
+          this.employees = rows;
+          next();
+      });
+    });
+  }
+
+  updateEmployeeInDb(role_id, manager_id, employee_id, next) {
+    this.db.promise().query(`UPDATE employees SET title_id = "${role_id}", manager_id = ${manager_id} WHERE employee_id = "${employee_id}"`)
+    .then(([rows, fields]) => {
+      this.db.promise().query(`SELECT * FROM employees`)
+      .then(([rows, fields]) => {
+          console.log("\n");
+          console.table(rows);
+          this.employees = rows;
+          next();
+      });
+    });
+  }
+
 };
-*/
+
+module.exports = DbQuery;

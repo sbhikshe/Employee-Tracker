@@ -1,21 +1,7 @@
 const inquirer = require('inquirer');
 const { allowedNodeEnvironmentFlags } = require('process');
-//const dbQuery = require('./dbQuery');
-
-const mysql2 = require('mysql2');
-const db = mysql2.createConnection(
-  {
-    host: 'localhost',
-    user: 'root',
-    database: 'organization_db'
-  },
-  console.log("Connected to organization_db")
-);
-
-let departments = [];
-let roles = [];
-let employees = [];
-let managers = [];
+const DbQuery = require('./DbQuery');
+const dbQuery = new DbQuery();
 
 const topLevelQs = [
   {
@@ -59,6 +45,7 @@ const addRoleQs = [
         return ("Please enter a number");
       } else {
       // should check that its not already taken
+        let roles = dbQuery.getRoles();
         for (const item of roles) {
           if (role_id == item.role_id) {
             return ("Id already exists, please enter a different number");
@@ -158,16 +145,15 @@ const updateEmployeeQs = [
 ];
 
 function askUser() {
-  readDbForSetup();
+  dbQuery.initFromDb();
   inquirer.prompt(topLevelQs)
   .then(response => {
-    console.log(response);
     if(response.selectedAction == 'View all departments') {
-      getDepartments();
+      viewDepartments();
     } else if (response.selectedAction == 'View all roles') {
-      getRoles();
+      viewRoles();
     } else if (response.selectedAction == 'View all employees'){
-      getEmployees();
+      viewEmployees();
     } else if(response.selectedAction == 'Add a department:') {
       addDepartment();
     } else if(response.selectedAction == 'Add a role:') {
@@ -178,133 +164,55 @@ function askUser() {
       updateEmployee();
     }else {
       console.log("Exiting the system");
-      return;
+      process.exit();
     };
   });
 }
 
-function readDbForSetup() {
-  /* read the departments */
-  db.promise().query(`SELECT * FROM departments`)
-  .then (([rows, fields]) => {
-      departments = rows;
-    }
-  );
-
-  /* read the roles */
-  db.promise().query(`SELECT * FROM roles`)
-  .then(([rows, fields]) => {
-    roles = rows;
-  });
-
-  /* read the employees */
-  db.promise().query(`SELECT employee_id, CONCAT_WS(" ", first_name, last_name) AS name FROM employees`)
-  .then(([rows, fields]) => {
-      employees = rows;
-  });
-
-   /* read the managers */
-   db.promise().query(`SELECT employee_id, CONCAT_WS(" ", first_name, last_name) AS name FROM employees WHERE manager_id IS NULL`)
-   .then(([rows, fields]) => {
-       managers = rows;
-   });
-}
-function getDepartments(next) {
-  db.promise().query(`SELECT * FROM departments`)
-  .then (([rows, fields]) => {
-      console.log("\n");
-      console.table(rows);
-      departments = rows;
-      askUser();
-    }
-  );
+function viewDepartments() {
+  dbQuery.getDepartmentsFromDb(askUser);
 }
 
-function getRoles(next) {
-    db.promise().query(`SELECT role_id, title, dep_name, salary
-              FROM roles INNER JOIN departments ON roles.department_id = departments.dep_id`)
-      .then(([rows, fields]) => {
-        console.log("\n");
-        console.table(rows);
-        roles = rows;
-        askUser();
-      });
+function viewRoles() {
+  dbQuery.getRolesFromDb(askUser); 
 }
 
-function getEmployees(next) {
-  let queryStr = `SELECT employee_id, CONCAT_WS(" ", first_name, last_name) as name, title, dep_name, salary, NULL as manager
-  FROM employees 
-  INNER JOIN roles ON title_id = roles.role_id
-  INNER JOIN departments ON roles.department_id = departments.dep_id
-  WHERE manager_id IS NULL 
-  UNION            
-  SELECT b.employee_id, CONCAT_WS(" ", b.first_name, b.last_name) as name, title, dep_name, salary, CONCAT_WS(" ", a.first_name, a.last_name) as manager
-  FROM employees a, employees b 
-  INNER JOIN roles ON title_id = roles.role_id
-  INNER JOIN departments ON roles.department_id = departments.dep_id
-  WHERE b.manager_id = a.employee_id`;
-
-  db.promise().query(queryStr)
-    .then(([rows, fields]) => {
-      console.log("\n");
-      console.table(rows);
-      employees = rows;
-      askUser();
-    });
+function viewEmployees() {
+  dbQuery.getEmployeesFromDb(askUser);
 }
 
 function addDepartment() {
   inquirer.prompt(addDepartmentQs)
   .then(response => {
     console.log("Adding department: " + response.departmentName);
-    db.query(`INSERT INTO departments(dep_name) VALUES ("${response.departmentName}")`, (err, results) => {
-      console.log("added department");
-      db.query(`SELECT * FROM departments`, (err, results) => {
-        console.log("\n");
-        console.table(results);
-        departments = results;
-        askUser();
-      });
-    });
+    dbQuery.addDepartmentToDb(response.departmentName, askUser);
   });
 }
 
 function addRole() {
+  let departments = dbQuery.getDepartments();
   for(const item of departments) {
     addRoleQs[3].choices.push(item.dep_name);
   }
   inquirer.prompt(addRoleQs)
   .then(response => {
-    /*
-    console.log("Adding a role: ");
-    console.log("role_id = " + response.role_id);
-    console.log("title = " + response.title);
-    console.log("salary = " + response.salary);
-    console.log("department = " + response.department);
-    */
-
     let department_id;
     for (const item of departments) {
       if(item.dep_name == response.department)
       department_id = item.dep_id;
     }
-    db.promise().query(`INSERT INTO roles(role_id, title, salary, department_id) VALUES("${response.role_id}", "${response.title}", "${response.salary}", "${department_id}")`)
-    .then(([rows, fields])=> {
-      db.query(`SELECT * FROM roles`, (err, results) => {
-        console.table(results);
-        roles = results;
-        askUser();
-      });
-    });          
+    dbQuery.addRoleToDb(response.role_id, response.title, response.salary, department_id, askUser);         
   });  
 }
 
 function addEmployee() {
   /* get the roles */
+  let roles = dbQuery.getRoles();
   for (const item of roles) {
     addEmployeeQs[2].choices.push(item.title);
   }
   /* get the managers */
+  let managers = dbQuery.getManagers();
   for(const item of managers) {
       addEmployeeQs[3].choices.push(item.name);
   }
@@ -312,14 +220,6 @@ function addEmployee() {
 
   inquirer.prompt(addEmployeeQs)
   .then(response => {
-    /*
-    console.log("Adding an employee: ");
-    console.log("first_name = " + response.first_name);
-    console.log("last_name = " + response.last_name);
-    console.log("role = " + response.role);
-    console.log("manager = " + response.manager);
-    */
-
     let role_id;
     for (const item of roles) {
       if(item.title == response.role) {
@@ -338,30 +238,23 @@ function addEmployee() {
       }
     }
 
-    db.promise().query(`INSERT INTO employees(first_name, last_name, title_id, manager_id)
-    VALUES ("${response.first_name}", "${response.last_name}", "${role_id}", ${manager_id})`)
-    .then(([rows, fields]) => {
-      db.promise().query(`SELECT * FROM employees`)
-      .then(([rows, fields]) => {
-          console.log("\n");
-          console.table(rows);
-          employees = rows;
-          askUser();
-      });
-    });
+    dbQuery.addEmployeeToDb(response.first_name, response.last_name, role_id, manager_id, askUser);
   });
 }
 
 function updateEmployee() {
   /* get the employees */
+  let employees = dbQuery.getEmployees();
   for (const item of employees) {
     updateEmployeeQs[0].choices.push(item.name);
   }
   /* get the roles */
+  let roles = dbQuery.getRoles();
   for (const item of roles) {
     updateEmployeeQs[1].choices.push(item.title);
   }
   /* get the managers */
+  let managers = dbQuery.getManagers();
   for(const item of managers) {
       updateEmployeeQs[2].choices.push(item.name);
   }
@@ -369,13 +262,6 @@ function updateEmployee() {
 
   inquirer.prompt(updateEmployeeQs)
   .then(response => {
-    /*
-    console.log("Adding an employee: ");
-    console.log("name = " + response.name);
-    console.log("role = " + response.role);
-    console.log("manager = " + response.manager);
-    */
-
     let employee_id;
     for(const item of employees) {
       if(item.name == response.name) {
@@ -388,7 +274,6 @@ function updateEmployee() {
         role_id = item.role_id;
       }
     }
-
     let manager_id;
     if(response.manager == "None") {
       manager_id = null;
@@ -400,16 +285,7 @@ function updateEmployee() {
       }
     }
 
-    db.promise().query(`UPDATE employees SET title_id = "${role_id}", manager_id = ${manager_id} WHERE employee_id = "${employee_id}"`)
-    .then(([rows, fields]) => {
-      db.promise().query(`SELECT * FROM employees`)
-      .then(([rows, fields]) => {
-          console.log("\n");
-          console.table(rows);
-          employees = rows;
-          askUser();
-      });
-    });
+    dbQuery.updateEmployeeInDb(role_id, manager_id,employee_id, askUser);
   });
 }
 
