@@ -3,6 +3,7 @@ const { allowedNodeEnvironmentFlags } = require('process');
 const DbQuery = require('./DbQuery');
 const dbQuery = new DbQuery();
 
+/* The main options given to the user */
 const topLevelQs = [
   {
     type: 'list',
@@ -22,6 +23,7 @@ const topLevelQs = [
   }
 ];
 
+/* Prompts for the user to add a department */
 const addDepartmentQs = [
   {
     type: 'input',
@@ -36,6 +38,7 @@ const addDepartmentQs = [
   }
 ];
 
+/* Prompts to the user to add a new role */
 const addRoleQs = [
   {
     type: 'number',
@@ -86,6 +89,7 @@ const addRoleQs = [
   }
 ];
 
+/* Prompts to the user to add a new employee */
 const addEmployeeQs = [
   {
     type: 'input',
@@ -124,6 +128,7 @@ const addEmployeeQs = [
 
 ];
 
+/* Prompts to update an employee's role */
 const updateEmployeeRoleQs = [
   {
     type: 'list',
@@ -139,6 +144,7 @@ const updateEmployeeRoleQs = [
   }
 ];
 
+/* Prompts to update an employee's manager */
 const updateEmployeeManagerQs = [
   {
     type: 'list',
@@ -154,6 +160,8 @@ const updateEmployeeManagerQs = [
   }
 ];
 
+/* Inquirer showing the main options to the user, get the choice 
+    and call the appropriate function */
 function askUser() {
   dbQuery.initFromDb();
   inquirer.prompt(topLevelQs)
@@ -181,18 +189,22 @@ function askUser() {
   });
 }
 
+/* View all departments - pass on to dbQuery */
 function viewDepartments() {
   dbQuery.getDepartmentsFromDb(askUser);
 }
 
+/* View all roles */
 function viewRoles() {
   dbQuery.getRolesFromDb(askUser); 
 }
 
+/* View all employees */
 function viewEmployees() {
   dbQuery.getEmployeesFromDb(askUser);
 }
 
+/* Add a department, get the department from the user response */
 function addDepartment() {
   inquirer.prompt(addDepartmentQs)
   .then(response => {
@@ -201,7 +213,11 @@ function addDepartment() {
   });
 }
 
+/* Add a new role. Get the role_id, title, salary and department
+  from the user response and pass onto DbQuery */
 function addRole() {
+  /* get the departments to show as dropdown 
+  selection in inquirer */
   let departments = dbQuery.getDepartments();
   for(const item of departments) {
     addRoleQs[3].choices.push(item.dep_name);
@@ -217,17 +233,22 @@ function addRole() {
   });  
 }
 
+/* Add an employee. Get the first name, last name, title, manager
+  and pass onto DbQuery */
 function addEmployee() {
-  /* get the roles */
+  /* get the roles - show as dropdown selection 
+    to pick a role for the new employee */
   let roles = dbQuery.getRoles();
   for (const item of roles) {
     addEmployeeQs[2].choices.push(item.title);
   }
-  /* get the managers */
+  /* get the managers - to show as dropdown to 
+    assign a manager to the employee */
   let managers = dbQuery.getManagers();
   for(const item of managers) {
       addEmployeeQs[3].choices.push(item.name);
   }
+  /* If the new employee is a manager, no manager may be assigned */
   addEmployeeQs[3].choices.push("None");
 
   inquirer.prompt(addEmployeeQs)
@@ -255,12 +276,14 @@ function addEmployee() {
 }
 
 function updateEmployeeRole() {
-  /* get the employees */
+  /* get the employees - to show as dropdown to 
+    choose the employee to update */
   let employees = dbQuery.getEmployees();
   for (const item of employees) {
     updateEmployeeRoleQs[0].choices.push(item.name);
   }
-  /* get the roles */
+  /* get the roles - to pick a different role for
+    an employee  */
   let roles = dbQuery.getRoles();
   for (const item of roles) {
     updateEmployeeRoleQs[1].choices.push(item.title);
@@ -286,12 +309,14 @@ function updateEmployeeRole() {
 }
 
 function updateEmployeeManager() {
-  /* get the employees */
+  /* get the employees - to choose an employee
+    to update */
   let employees = dbQuery.getEmployees();
   for (const item of employees) {
     updateEmployeeManagerQs[0].choices.push(item.name);
   }
-  /* get the managers */
+  /* get the managers - to pick a different manager
+    for the employee */
   let managers = dbQuery.getManagers();
   for(const item of managers) {
       updateEmployeeManagerQs[1].choices.push(item.name);
