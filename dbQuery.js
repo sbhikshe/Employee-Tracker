@@ -94,23 +94,26 @@ class DbQuery {
   }
 
   addDepartmentToDb(departmentName, next) {
-    this.db.query(`INSERT INTO departments(dep_name) VALUES ("${departmentName}")`, (err, results) => {
-      console.log("added department");
-      this.db.query(`SELECT * FROM departments`, (err, results) => {
-        console.log("\n");
-        console.table(results);
-        this.departments = results;
-        next();
+    this.db.promise().query(`INSERT INTO departments(dep_name) VALUES ("${departmentName}")`)
+      .then(([rows, fields]) => {
+        console.log("added department");
+        this.db.promise().query(`SELECT * FROM departments`)
+        .then(([rows, fields])=>{
+          console.log("\n");
+          console.table(rows);
+          this.departments = rows;
+          next();
+        });
       });
-    });
   }
   
   addRoleToDb(role_id, title, salary, department_id, next) {
     this.db.promise().query(`INSERT INTO roles(role_id, title, salary, department_id) VALUES("${role_id}", "${title}", "${salary}", "${department_id}")`)
     .then(([rows, fields])=> {
-      this.db.query(`SELECT * FROM roles`, (err, results) => {
-        console.table(results);
-        this.roles = results;
+      this.db.promise().query(`SELECT * FROM roles`)
+      .then(([rows, fields]) => {
+        console.table(rows);
+        this.roles = rows;
         next();
       });
     }); 
