@@ -14,7 +14,8 @@ const topLevelQs = [
           'Add a department:',
           'Add a role:',
           'Add an employee:',
-          'Update existing employee:',
+          'Update employee role:',
+          'Update employee manager:',
           'Exit'
         ],
     name: 'selectedAction'
@@ -123,7 +124,7 @@ const addEmployeeQs = [
 
 ];
 
-const updateEmployeeQs = [
+const updateEmployeeRoleQs = [
   {
     type: 'list',
     message: "Choose employee to update:",
@@ -135,7 +136,16 @@ const updateEmployeeQs = [
     message: "Please select a role:",
     name: 'role',
     choices: []
-  },  
+  }
+];
+
+const updateEmployeeManagerQs = [
+  {
+    type: 'list',
+    message: "Choose employee to update:",
+    name: 'name',
+    choices: []
+  }, 
   {
     type: 'list',
     message: "Please select a manager:",
@@ -160,9 +170,11 @@ function askUser() {
       addRole();
     } else if(response.selectedAction == 'Add an employee:') {
       addEmployee();
-    } else if(response.selectedAction == 'Update existing employee:') {
-      updateEmployee();
-    }else {
+    } else if(response.selectedAction == 'Update employee role:') {
+      updateEmployeeRole();
+    } else if(response.selectedAction == 'Update employee manager:') {
+      updateEmployeeManager();
+    } else {
       console.log("Exiting the system");
       process.exit();
     };
@@ -242,25 +254,19 @@ function addEmployee() {
   });
 }
 
-function updateEmployee() {
+function updateEmployeeRole() {
   /* get the employees */
   let employees = dbQuery.getEmployees();
   for (const item of employees) {
-    updateEmployeeQs[0].choices.push(item.name);
+    updateEmployeeRoleQs[0].choices.push(item.name);
   }
   /* get the roles */
   let roles = dbQuery.getRoles();
   for (const item of roles) {
-    updateEmployeeQs[1].choices.push(item.title);
+    updateEmployeeRoleQs[1].choices.push(item.title);
   }
-  /* get the managers */
-  let managers = dbQuery.getManagers();
-  for(const item of managers) {
-      updateEmployeeQs[2].choices.push(item.name);
-  }
-  updateEmployeeQs[2].choices.push("None");
 
-  inquirer.prompt(updateEmployeeQs)
+  inquirer.prompt(updateEmployeeRoleQs)
   .then(response => {
     let employee_id;
     for(const item of employees) {
@@ -274,6 +280,32 @@ function updateEmployee() {
         role_id = item.role_id;
       }
     }
+
+    dbQuery.updateEmployeeRoleInDb(role_id, employee_id, askUser);
+  });
+}
+
+function updateEmployeeManager() {
+  /* get the employees */
+  let employees = dbQuery.getEmployees();
+  for (const item of employees) {
+    updateEmployeeManagerQs[0].choices.push(item.name);
+  }
+  /* get the managers */
+  let managers = dbQuery.getManagers();
+  for(const item of managers) {
+      updateEmployeeManagerQs[1].choices.push(item.name);
+  }
+  updateEmployeeManagerQs[1].choices.push("None");
+
+  inquirer.prompt(updateEmployeeManagerQs)
+  .then(response => {
+    let employee_id;
+    for(const item of employees) {
+      if(item.name == response.name) {
+        employee_id = item.employee_id;
+      }
+    }
     let manager_id;
     if(response.manager == "None") {
       manager_id = null;
@@ -285,7 +317,7 @@ function updateEmployee() {
       }
     }
 
-    dbQuery.updateEmployeeInDb(role_id, manager_id,employee_id, askUser);
+    dbQuery.updateEmployeeManagerInDb(manager_id,employee_id, askUser);
   });
 }
 

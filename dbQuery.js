@@ -130,8 +130,21 @@ class DbQuery {
     });
   }
 
-  updateEmployeeInDb(role_id, manager_id, employee_id, next) {
-    this.db.promise().query(`UPDATE employees SET title_id = "${role_id}", manager_id = ${manager_id} WHERE employee_id = "${employee_id}"`)
+  updateEmployeeRoleInDb(role_id, employee_id, next) {
+    this.db.promise().query(`UPDATE employees SET title_id = "${role_id}" WHERE employee_id = "${employee_id}"`)
+    .then(([rows, fields]) => {
+      this.db.promise().query(`SELECT * FROM employees`)
+      .then(([rows, fields]) => {
+          console.log("\n");
+          console.table(rows);
+          this.employees = rows;
+          next();
+      });
+    });
+  }
+
+  updateEmployeeManagerInDb(manager_id, employee_id, next) {
+    this.db.promise().query(`UPDATE employees SET manager_id = ${manager_id} WHERE employee_id = "${employee_id}"`)
     .then(([rows, fields]) => {
       this.db.promise().query(`SELECT * FROM employees`)
       .then(([rows, fields]) => {
